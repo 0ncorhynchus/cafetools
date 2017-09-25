@@ -1,45 +1,47 @@
+extern crate cafetools;
+
 use std::env;
 use std::process;
 use std::fs::File;
 use std::io::{BufReader, LineWriter};
 use std::io::prelude::*;
+use cafetools::skip_lines;
+use cafetools::error::*;
+use cafetools::time_series::*;
+
+fn write_header<W: Write+?Sized>(writer: &mut W) -> std::io::Result<()> {
+    writeln!(writer, "step,tempk,radg,etot,velet,qscore,rmsd")
+}
+
+fn write_snapshot<W: Write+?Sized>(writer: &mut W, snapshot: &SnapShot) -> std::io::Result<()> {
+    writeln!(writer, "{},{:.2},{:.2},{:.2},{:.2},{:.3},{:.2}",
+             snapshot.step,
+             snapshot.tempk,
+             snapshot.radg,
+             snapshot.etot,
+             snapshot.velet,
+             snapshot.qscore,
+             snapshot.rmsd)
+}
+
+fn convert_all<R: BufRead, W: Write>(reader: &mut R, writer: &mut W) -> Result<()> {
+    write_header(writer)?;
+
+    skip_lines(reader, 9)?; // Skip headers
+
+    for line in reader.lines() {
+        let snapshot = line?.parse::<SnapShot>()?;
+        if !snapshot.unit.is_empty() {
+            continue;
+        }
+        write_snapshot(writer, &snapshot)?;
+    }
+
+    Ok(())
+}
 
 fn print_usage(program: &str) {
     println!("Usage: {} INPUT OUTPUT", program);
-}
-
-fn skip_lines<R: BufRead>(reader: &mut R, num_lines: usize) -> std::io::Result<()> {
-    let mut buf = String::new();
-    for _ in 0..num_lines {
-        reader.read_line(&mut buf)?;
-    }
-    Ok(())
-}
-
-fn replace_tab_to_comma(line: &str) -> String {
-    line.split_whitespace()
-        .collect::<Vec<&str>>()
-        .join(",")
-}
-
-fn convert_all<R: BufRead, W: Write>(reader: &mut R, writer: &mut W) -> std::io::Result<()> {
-    skip_lines(reader, 5)?;
-
-    let mut buf = String::new();
-    reader.read_line(&mut buf)?;
-    writeln!(writer, "{}", replace_tab_to_comma(&buf[6..]))?;
-
-    skip_lines(reader, 3)?;
-
-    for line in reader.lines() {
-        let line = line?;
-        if line.len() < 5 || line[..5].trim().len() == 0 {
-            continue;
-        }
-        writeln!(writer, "{}", replace_tab_to_comma(&line[6..]))?;
-    }
-
-    Ok(())
 }
 
 fn main() {

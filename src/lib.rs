@@ -1,3 +1,6 @@
+pub mod error;
+pub mod time_series;
+
 use std::io::prelude::*;
 
 pub fn skip_lines<R: BufRead>(reader: &mut R, num_lines: usize) -> std::io::Result<()> {
@@ -6,11 +9,4 @@ pub fn skip_lines<R: BufRead>(reader: &mut R, num_lines: usize) -> std::io::Resu
         reader.read_line(&mut buf)?;
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-    }
 }
