@@ -1,0 +1,7 @@
+[package]
+name = "cafetools"
+version = "0.1.0"
+authors = ["Suguru Kato <salmon.bioinformatics@gmail.com>"]
+
+[dependencies]
+dcdio = { git = 'https://github.com/0ncorhynchus/dcdio.git' }
