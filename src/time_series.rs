@@ -1,6 +1,6 @@
 use error;
 use std::str::FromStr;
-use std::string::ToString;
+use std::fmt;
 
 /// A SnapShot contains the data for each time-step.
 pub struct SnapShot {
@@ -31,17 +31,17 @@ impl FromStr for SnapShot {
     }
 }
 
-impl ToString for SnapShot {
-    fn to_string(&self) -> String {
-        format!("{:5} {:10} {:8.2} {:8.2} {:10.2} {:10.2} {:6.3} {:8.2}",
-                self.unit,
-                self.step,
-                self.tempk,
-                self.radg,
-                self.etot,
-                self.velet,
-                self.qscore,
-                self.rmsd)
+impl fmt::Display for SnapShot {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:5} {:10} {:8.2} {:8.2} {:10.2} {:10.2} {:6.3} {:8.2}",
+               self.unit,
+               self.step,
+               self.tempk,
+               self.radg,
+               self.etot,
+               self.velet,
+               self.qscore,
+               self.rmsd)
     }
 }
 
