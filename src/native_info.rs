@@ -1,6 +1,71 @@
 use error;
 use std::str::FromStr;
 use std::fmt;
+use std::num::{ParseIntError, ParseFloatError};
+
+struct LineParser<'a> {
+    line: &'a str,
+    pos: usize,
+    pub ty: String,
+}
+
+impl<'a> LineParser<'a> {
+    pub fn new(line: &str) -> LineParser {
+        LineParser {
+            line: &line[5..],
+            pos: 0,
+            ty: line[0..4].to_string(),
+        }
+    }
+
+    pub fn parse_float(&mut self) -> Result<f64, ParseFloatError> {
+        let start = self.pos;
+        let end = start + 12;
+        self.pos = end + 1;
+        self.line[start..end].trim().parse()
+    }
+
+    pub fn parse_usize(&mut self) -> Result<usize, ParseIntError> {
+        let start = self.pos;
+        let end = start + 6;
+        self.pos = end + 1;
+        self.line[start..end].trim().parse()
+    }
+
+    pub fn parse_string(&mut self, size: usize) -> String {
+        let start = self.pos;
+        let end = start + size;
+        self.pos = end + 1;
+        self.line[start..end].trim().to_string()
+    }
+
+    pub fn parse_particles(&mut self, num: usize) -> Result<Vec<Particle>, ParseIntError> {
+        let unit = self.parse_usize()?;
+        assert_eq!(unit, self.parse_usize()?);
+
+        let mut indexes = Vec::new();
+        let mut intra_indexes = Vec::new();
+
+        for _ in 0..num {
+            indexes.push(self.parse_usize()?);
+        }
+
+        for _ in 0..num {
+            intra_indexes.push(self.parse_usize()?);
+        }
+
+        let mut result = Vec::new();
+        for i in 0..num {
+            result.push(Particle {
+                unit: unit,
+                index: indexes[i],
+                intra_index: intra_indexes[i],
+            });
+        }
+
+        Ok(result)
+    }
+}
 
 pub struct Particle {
     pub unit:        usize,
@@ -10,7 +75,7 @@ pub struct Particle {
 
 pub struct NativeBond {
     pub index:       usize,
-    pub pair:        [Particle; 2],
+    pub pair:        Vec<Particle>,
     pub length:      f64,
     pub factor:      f64,
     pub correct_mgo: f64,
@@ -31,39 +96,19 @@ fn fmt_particles(particles: &[Particle], f: &mut fmt::Formatter) -> fmt::Result 
     Ok(())
 }
 
-fn extract_last_string(string: &str, pos: usize, size: usize) -> String {
-    let end = pos + size;
-    if string.len() < pos {
-        ""
-    } else if string.len() < end {
-        &string[pos..string.len()]
-    } else {
-        &string[pos..end]
-    }.trim().to_string()
-}
-
 impl FromStr for NativeBond {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let first = Particle {
-            unit:        line[12..18].trim().parse()?,
-            index:       line[26..32].trim().parse()?,
-            intra_index: line[40..46].trim().parse()?,
-        };
-        let second = Particle {
-            unit:        line[19..25].trim().parse()?,
-            index:       line[33..39].trim().parse()?,
-            intra_index: line[47..53].trim().parse()?,
-        };
+        let mut parser = LineParser::new(line);
         Ok(NativeBond {
-            index:       line[ 5.. 11].trim().parse()?,
-            pair:        [first, second],
-            length:      line[54.. 66].trim().parse()?,
-            factor:      line[67.. 79].trim().parse()?,
-            correct_mgo: line[80.. 92].trim().parse()?,
-            coefficient: line[93..105].trim().parse()?,
-            bond_type:   extract_last_string(&line, 106, 3),
+            index:       parser.parse_usize()?,
+            pair:        parser.parse_particles(2)?,
+            length:      parser.parse_float()?,
+            factor:      parser.parse_float()?,
+            correct_mgo: parser.parse_float()?,
+            coefficient: parser.parse_float()?,
+            bond_type:   parser.parse_string(2),
         })
     }
 }
@@ -84,7 +129,7 @@ impl fmt::Display for NativeBond {
 
 pub struct NativeAngle {
     pub index: usize,
-    pub triple: [Particle; 3],
+    pub triple: Vec<Particle>,
     pub angle: f64,
     pub factor: f64,
     pub correct_mgo: f64,
@@ -96,31 +141,15 @@ impl FromStr for NativeAngle {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let unit: usize = line[12..18].trim().parse()?;
-        // assert_eq!(unit, line[19..25].trim().parse()?);
-        let first = Particle {
-            unit:        unit,
-            index:       line[26..32].trim().parse()?,
-            intra_index: line[47..53].trim().parse()?,
-        };
-        let second = Particle {
-            unit:        unit,
-            index:       line[33..39].trim().parse()?,
-            intra_index: line[54..60].trim().parse()?,
-        };
-        let third = Particle {
-            unit:        unit,
-            index:       line[40..46].trim().parse()?,
-            intra_index: line[61..67].trim().parse()?,
-        };
+        let mut parser = LineParser::new(line);
         Ok(NativeAngle {
-            index: line[5..11].trim().parse()?,
-            triple: [first, second, third],
-            angle: line[68..80].trim().parse()?,
-            factor: line[81..93].trim().parse()?,
-            correct_mgo: line[94..106].trim().parse()?,
-            coefficient: line[107..119].trim().parse()?,
-            angle_type: extract_last_string(&line, 120, 4),
+            index:       parser.parse_usize()?,
+            triple:      parser.parse_particles(3)?,
+            angle:       parser.parse_float()?,
+            factor:      parser.parse_float()?,
+            correct_mgo: parser.parse_float()?,
+            coefficient: parser.parse_float()?,
+            angle_type:  parser.parse_string(3),
         })
     }
 }
