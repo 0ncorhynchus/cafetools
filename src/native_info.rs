@@ -1,78 +1,6 @@
 use error;
 use std::str::FromStr;
 use std::fmt;
-use std::num::ParseIntError;
-
-trait Parsable {
-    fn len_hint() -> usize;
-}
-
-impl Parsable for f64 {
-    fn len_hint() -> usize { 12 }
-}
-
-impl Parsable for usize {
-    fn len_hint() -> usize { 6 }
-}
-
-struct LineParser<'a> {
-    line: &'a str,
-    pos: usize,
-}
-
-impl<'a> LineParser<'a> {
-    pub fn new(line: &str) -> LineParser {
-        LineParser {
-            line: line,
-            pos: 0,
-        }
-    }
-
-    pub fn parse<T: FromStr + Parsable>(&mut self) -> Result<T, T::Err> {
-        let start = self.pos + 1;
-        self.pos = start + T::len_hint();
-        self.line[start..self.pos].trim().parse()
-    }
-
-    pub fn parse_without_space<T: FromStr + Parsable>(&mut self) -> Result<T, T::Err> {
-        let start = self.pos;
-        self.pos = start + T::len_hint();
-        self.line[start..self.pos].trim().parse()
-    }
-
-    pub fn parse_string(&mut self, size: usize) -> String {
-        let start = self.pos + 1;
-        self.pos = start + size;
-        self.line[start..self.pos].trim().to_string()
-    }
-
-    pub fn parse_particles(&mut self, num: usize) -> Result<Vec<Particle>, ParseIntError> {
-        let unit = self.parse()?;
-        assert_eq!(unit, self.parse()?);
-
-        let mut indexes = Vec::new();
-        let mut intra_indexes = Vec::new();
-
-        for _ in 0..num {
-            indexes.push(self.parse()?);
-        }
-
-        for _ in 0..num {
-            intra_indexes.push(self.parse()?);
-        }
-
-        let mut result = Vec::new();
-        for i in 0..num {
-            result.push(Particle {
-                unit: unit,
-                index: indexes[i],
-                intra_index: intra_indexes[i],
-            });
-        }
-
-        Ok(result)
-    }
-}
 
 pub struct Particle {
     pub unit:        usize,
@@ -80,54 +8,244 @@ pub struct Particle {
     pub intra_index: usize,
 }
 
+pub type Pair = (Particle, Particle);
+pub type Triple = (Particle, Particle, Particle);
+pub type Quad = (Particle, Particle, Particle, Particle);
+
+struct LineCursor<'a> {
+    line: &'a str,
+    pos: usize,
+}
+
+impl<'a> LineCursor<'a> {
+    pub fn new(line: &str) -> LineCursor {
+        LineCursor {
+            line: line,
+            pos: 0,
+        }
+    }
+
+    pub fn proceed(&mut self, len: usize) -> &str {
+        let start = self.pos;
+        self.pos += len;
+        &self.line[start..self.pos].trim()
+    }
+
+    pub fn parse<T: Parsable>(&mut self) -> Result<T, T::Err> {
+        T::parse_from(self)
+    }
+
+    pub fn parse_with_space<T: Parsable>(&mut self) -> Result<T, T::Err> {
+        self.proceed(1);
+        self.parse()
+    }
+}
+
+trait Parsable: Sized {
+    type Err;
+    fn parse_from(cursor: &mut LineCursor) -> Result<Self, Self::Err>;
+}
+
+trait Formattable {
+    fn format(&self, f: &mut fmt::Formatter) -> fmt::Result;
+}
+
+impl Parsable for f64 {
+    type Err = <Self as FromStr>::Err;
+    fn parse_from(cursor: &mut LineCursor) -> Result<Self, Self::Err> {
+        cursor.proceed(12).parse()
+    }
+}
+
+impl Formattable for f64 {
+    fn format(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:12.4}", self)
+    }
+}
+
+impl Parsable for usize {
+    type Err = <Self as FromStr>::Err;
+    fn parse_from(cursor: &mut LineCursor) -> Result<Self, Self::Err> {
+        cursor.proceed(6).parse()
+    }
+}
+
+impl Formattable for usize {
+    fn format(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:6}", self)
+    }
+}
+
+impl Parsable for Pair {
+    type Err = <usize as Parsable>::Err;
+    fn parse_from(cursor: &mut LineCursor) -> Result<Self, Self::Err> {
+        let unit0 = cursor.parse()?;
+        let unit1 = cursor.parse_with_space()?;
+        let index0 = cursor.parse_with_space()?;
+        let index1 = cursor.parse_with_space()?;
+        let intra_index0 = cursor.parse_with_space()?;
+        let intra_index1 = cursor.parse_with_space()?;
+        Ok((
+                Particle {
+                    unit: unit0,
+                    index: index0,
+                    intra_index: intra_index0,
+                },
+                Particle {
+                    unit: unit1,
+                    index: index1,
+                    intra_index: intra_index1,
+                }))
+    }
+}
+
+impl<'a> Formattable for &'a Pair {
+    fn format(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write(f, self.0.unit)?;
+        write_with_space(f, self.1.unit)?;
+        write_with_space(f, self.0.index)?;
+        write_with_space(f, self.1.index)?;
+        write_with_space(f, self.0.intra_index)?;
+        write_with_space(f, self.1.intra_index)?;
+        Ok(())
+    }
+}
+
+impl Parsable for Triple {
+    type Err = <usize as Parsable>::Err;
+    fn parse_from(cursor: &mut LineCursor) -> Result<Self, Self::Err> {
+        let unit0 = cursor.parse()?;
+        let unit1 = cursor.parse_with_space()?;
+        let index0 = cursor.parse_with_space()?;
+        let index1 = cursor.parse_with_space()?;
+        let index2 = cursor.parse_with_space()?;
+        let intra_index0 = cursor.parse_with_space()?;
+        let intra_index1 = cursor.parse_with_space()?;
+        let intra_index2 = cursor.parse_with_space()?;
+        Ok((
+                Particle {
+                    unit: unit0,
+                    index: index0,
+                    intra_index: intra_index0,
+                },
+                Particle {
+                    unit: unit1,
+                    index: index1,
+                    intra_index: intra_index1,
+                },
+                Particle {
+                    unit: unit1,
+                    index: index2,
+                    intra_index: intra_index2,
+                }))
+    }
+}
+
+impl<'a> Formattable for &'a Triple {
+    fn format(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write(f, self.0.unit)?;
+        write_with_space(f, self.1.unit)?;
+        write_with_space(f, self.0.index)?;
+        write_with_space(f, self.1.index)?;
+        write_with_space(f, self.2.index)?;
+        write_with_space(f, self.0.intra_index)?;
+        write_with_space(f, self.1.intra_index)?;
+        write_with_space(f, self.2.intra_index)?;
+        Ok(())
+    }
+}
+
+impl Parsable for Quad {
+    type Err = <usize as Parsable>::Err;
+    fn parse_from(cursor: &mut LineCursor) -> Result<Self, Self::Err> {
+        let unit0 = cursor.parse()?;
+        let unit1 = cursor.parse_with_space()?;
+        let index0 = cursor.parse_with_space()?;
+        let index1 = cursor.parse_with_space()?;
+        let index2 = cursor.parse_with_space()?;
+        let index3 = cursor.parse_with_space()?;
+        let intra_index0 = cursor.parse_with_space()?;
+        let intra_index1 = cursor.parse_with_space()?;
+        let intra_index2 = cursor.parse_with_space()?;
+        let intra_index3 = cursor.parse_with_space()?;
+        Ok((
+                Particle {
+                    unit: unit0,
+                    index: index0,
+                    intra_index: intra_index0,
+                },
+                Particle {
+                    unit: unit0,
+                    index: index1,
+                    intra_index: intra_index1,
+                },
+                Particle {
+                    unit: unit1,
+                    index: index2,
+                    intra_index: intra_index2,
+                },
+                Particle {
+                    unit: unit1,
+                    index: index3,
+                    intra_index: intra_index3,
+                }))
+    }
+}
+
+impl<'a> Formattable for &'a Quad {
+    fn format(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write(f, self.0.unit)?;
+        write_with_space(f, self.2.unit)?;
+        write_with_space(f, self.0.index)?;
+        write_with_space(f, self.1.index)?;
+        write_with_space(f, self.2.index)?;
+        write_with_space(f, self.3.index)?;
+        write_with_space(f, self.0.intra_index)?;
+        write_with_space(f, self.1.intra_index)?;
+        write_with_space(f, self.2.intra_index)?;
+        write_with_space(f, self.3.intra_index)?;
+        Ok(())
+    }
+}
+
+impl<'a> Formattable for &'a String {
+    fn format(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+fn write<T: Formattable>(f: &mut fmt::Formatter, value: T) -> fmt::Result {
+    value.format(f)
+}
+
+fn write_with_space<T: Formattable>(f: &mut fmt::Formatter, value: T) -> fmt::Result {
+    write!(f, " ")?;
+    write(f, value)
+}
+
 pub struct NativeBond {
     pub index:       usize,
-    pub pair:        Vec<Particle>,
+    pub pair:        Pair,
     pub length:      f64,
     pub factor:      f64,
     pub correct_mgo: f64,
     pub coefficient: f64,
-    pub bond_type:      String,
-}
-
-fn write_particles(f: &mut fmt::Formatter, particles: &[Particle]) -> fmt::Result {
-    for p in particles.iter().take(2) {
-        write!(f, " {:6}", p.unit)?;
-    }
-    for p in particles {
-        write!(f, " {:6}", p.index)?;
-    }
-    for p in particles {
-        write!(f, " {:6}", p.intra_index)?;
-    }
-    Ok(())
-}
-
-fn write_float(f: &mut fmt::Formatter, value: f64) -> fmt::Result {
-    write!(f, " {:12.4}", value)
-}
-
-fn write_usize(f: &mut fmt::Formatter, value: usize) -> fmt::Result {
-    write!(f, " {:6}", value)
-}
-
-fn write_float_without_space(f: &mut fmt::Formatter, value: f64) -> fmt::Result {
-    write!(f, "{:12.4}", value)
+    pub ty:          String,
 }
 
 impl FromStr for NativeBond {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let mut parser = LineParser::new(&line[4..]);
+        let mut cursor = LineCursor::new(&line[4..]);
         Ok(NativeBond {
-            index:       parser.parse()?,
-            pair:        parser.parse_particles(2)?,
-            length:      parser.parse()?,
-            factor:      parser.parse()?,
-            correct_mgo: parser.parse()?,
-            coefficient: parser.parse()?,
-            bond_type:   parser.parse_string(2),
+            index:       cursor.parse_with_space()?,
+            pair:        cursor.parse_with_space()?,
+            length:      cursor.parse_with_space()?,
+            factor:      cursor.parse_with_space()?,
+            correct_mgo: cursor.parse_with_space()?,
+            coefficient: cursor.parse_with_space()?,
+            ty:          cursor.proceed(3).to_string(),
         })
     }
 }
@@ -135,40 +253,40 @@ impl FromStr for NativeBond {
 impl fmt::Display for NativeBond {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "bond")?;
-        write_usize(f, self.index)?;
-        write_particles(f, &self.pair)?;
-        write_float(f, self.length)?;
-        write_float(f, self.factor)?;
-        write_float(f, self.correct_mgo)?;
-        write_float(f, self.coefficient)?;
-        write!(f, " {}", self.bond_type)?;
+        write_with_space(f, self.index)?;
+        write_with_space(f, &self.pair)?;
+        write_with_space(f, self.length)?;
+        write_with_space(f, self.factor)?;
+        write_with_space(f, self.correct_mgo)?;
+        write_with_space(f, self.coefficient)?;
+        write_with_space(f, &self.ty)?;
         Ok(())
     }
 }
 
 pub struct NativeAngle {
-    pub index: usize,
-    pub triple: Vec<Particle>,
-    pub angle: f64,
-    pub factor: f64,
+    pub index:       usize,
+    pub triple:      Triple,
+    pub angle:       f64,
+    pub factor:      f64,
     pub correct_mgo: f64,
     pub coefficient: f64,
-    pub angle_type: String
+    pub ty:          String
 }
 
 impl FromStr for NativeAngle {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let mut parser = LineParser::new(&line[4..]);
+        let mut cursor = LineCursor::new(&line[4..]);
         Ok(NativeAngle {
-            index:       parser.parse()?,
-            triple:      parser.parse_particles(3)?,
-            angle:       parser.parse()?,
-            factor:      parser.parse()?,
-            correct_mgo: parser.parse()?,
-            coefficient: parser.parse()?,
-            angle_type:  parser.parse_string(3),
+            index:       cursor.parse_with_space()?,
+            triple:      cursor.parse_with_space()?,
+            angle:       cursor.parse_with_space()?,
+            factor:      cursor.parse_with_space()?,
+            correct_mgo: cursor.parse_with_space()?,
+            coefficient: cursor.parse_with_space()?,
+            ty:          cursor.proceed(4).to_string(),
         })
     }
 }
@@ -176,42 +294,42 @@ impl FromStr for NativeAngle {
 impl fmt::Display for NativeAngle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "angl")?;
-        write_usize(f, self.index)?;
-        write_particles(f, &self.triple)?;
-        write_float(f, self.angle)?;
-        write_float(f, self.factor)?;
-        write_float(f, self.correct_mgo)?;
-        write_float(f, self.coefficient)?;
-        write!(f, " {}", self.angle_type)?;
+        write_with_space(f, self.index)?;
+        write_with_space(f, &self.triple)?;
+        write_with_space(f, self.angle)?;
+        write_with_space(f, self.factor)?;
+        write_with_space(f, self.correct_mgo)?;
+        write_with_space(f, self.coefficient)?;
+        write_with_space(f, &self.ty)?;
         Ok(())
     }
 }
 
 pub struct NativeDihedralAngle {
-    pub index: usize,
-    pub particles: Vec<Particle>,
-    pub angle: f64,
-    pub factor: f64,
-    pub correct_mgo: f64,
+    pub index:        usize,
+    pub quad:         Quad,
+    pub angle:        f64,
+    pub factor:       f64,
+    pub correct_mgo:  f64,
     pub coefficient1: f64,
     pub coefficient3: f64,
-    pub dihedral_type: String
+    pub ty:           String,
 }
 
 impl FromStr for NativeDihedralAngle {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let mut parser = LineParser::new(&line[4..]);
+        let mut cursor = LineCursor::new(&line[4..]);
         Ok(NativeDihedralAngle {
-            index:         parser.parse()?,
-            particles:     parser.parse_particles(4)?,
-            angle:         parser.parse()?,
-            factor:        parser.parse()?,
-            correct_mgo:   parser.parse()?,
-            coefficient1:  parser.parse()?,
-            coefficient3:  parser.parse()?,
-            dihedral_type: parser.parse_string(4),
+            index:         cursor.parse_with_space()?,
+            quad:          cursor.parse_with_space()?,
+            angle:         cursor.parse_with_space()?,
+            factor:        cursor.parse_with_space()?,
+            correct_mgo:   cursor.parse_with_space()?,
+            coefficient1:  cursor.parse_with_space()?,
+            coefficient3:  cursor.parse_with_space()?,
+            ty:            cursor.proceed(5).to_string(),
         })
     }
 }
@@ -219,41 +337,41 @@ impl FromStr for NativeDihedralAngle {
 impl fmt::Display for NativeDihedralAngle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "dihd")?;
-        write_usize(f, self.index)?;
-        write_particles(f, &self.particles)?;
-        write_float(f, self.angle)?;
-        write_float(f, self.factor)?;
-        write_float(f, self.correct_mgo)?;
-        write_float(f, self.coefficient1)?;
-        write_float(f, self.coefficient3)?;
-        write!(f, " {}", self.dihedral_type)?;
+        write_with_space(f, self.index)?;
+        write_with_space(f, &self.quad)?;
+        write_with_space(f, self.angle)?;
+        write_with_space(f, self.factor)?;
+        write_with_space(f, self.correct_mgo)?;
+        write_with_space(f, self.coefficient1)?;
+        write_with_space(f, self.coefficient3)?;
+        write_with_space(f, &self.ty)?;
         Ok(())
     }
 }
 
 pub struct NativeContact {
-    pub index: usize,
-    pub particles: Vec<Particle>,
-    pub length: f64,
-    pub factor: f64,
-    pub dummy: usize,
+    pub index:       usize,
+    pub pair:        Pair,
+    pub length:      f64,
+    pub factor:      f64,
+    pub dummy:       usize,
     pub coefficient: f64,
-    pub ty: String,
+    pub ty:          String,
 }
 
 impl FromStr for NativeContact {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let mut parser = LineParser::new(&line[7..]);
+        let mut cursor = LineCursor::new(&line[7..]);
         Ok(NativeContact {
-            index:       parser.parse()?,
-            particles:   parser.parse_particles(2)?,
-            length:      parser.parse_without_space()?,
-            factor:      parser.parse_without_space()?,
-            dummy:       parser.parse()?,
-            coefficient: parser.parse_without_space()?,
-            ty:          parser.parse_string(3),
+            index:       cursor.parse_with_space()?,
+            pair:        cursor.parse_with_space()?,
+            length:      cursor.parse()?,
+            factor:      cursor.parse()?,
+            dummy:       cursor.parse_with_space()?,
+            coefficient: cursor.parse()?,
+            ty:          cursor.proceed(4).to_string(),
         })
     }
 }
@@ -261,42 +379,42 @@ impl FromStr for NativeContact {
 impl fmt::Display for NativeContact {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "contact")?;
-        write_usize(f, self.index)?;
-        write_particles(f, &self.particles)?;
-        write_float_without_space(f, self.length)?;
-        write_float_without_space(f, self.factor)?;
-        write_usize(f, self.dummy)?;
-        write_float_without_space(f, self.coefficient)?;
-        write!(f, " {}", self.ty)?;
+        write_with_space(f, self.index)?;
+        write_with_space(f, &self.pair)?;
+        write(f, self.length)?;
+        write(f, self.factor)?;
+        write_with_space(f, self.dummy)?;
+        write(f, self.coefficient)?;
+        write_with_space(f, &self.ty)?;
         Ok(())
     }
 }
 
 pub struct AICG13Contact {
-    pub index: usize,
-    pub particles: Vec<Particle>,
-    pub value: f64,
-    pub factor: f64,
+    pub index:       usize,
+    pub triple:      Triple,
+    pub value:       f64,
+    pub factor:      f64,
     pub correct_mgo: f64,
     pub coefficient: f64,
-    pub width: f64,
-    pub ty: String,
+    pub width:       f64,
+    pub ty:          String,
 }
 
 impl FromStr for AICG13Contact {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let mut parser = LineParser::new(&line[6..]);
+        let mut cursor = LineCursor::new(&line[6..]);
         Ok(AICG13Contact {
-            index:       parser.parse()?,
-            particles:   parser.parse_particles(3)?,
-            value:       parser.parse()?,
-            factor:      parser.parse()?,
-            correct_mgo: parser.parse()?,
-            coefficient: parser.parse()?,
-            width:       parser.parse()?,
-            ty:          parser.parse_string(3),
+            index:       cursor.parse_with_space()?,
+            triple:      cursor.parse_with_space()?,
+            value:       cursor.parse_with_space()?,
+            factor:      cursor.parse_with_space()?,
+            correct_mgo: cursor.parse_with_space()?,
+            coefficient: cursor.parse_with_space()?,
+            width:       cursor.parse_with_space()?,
+            ty:          cursor.proceed(4).to_string(),
         })
     }
 }
@@ -304,43 +422,43 @@ impl FromStr for AICG13Contact {
 impl fmt::Display for AICG13Contact {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "aicg13")?;
-        write_usize(f, self.index)?;
-        write_particles(f, &self.particles)?;
-        write_float(f, self.value)?;
-        write_float(f, self.factor)?;
-        write_float(f, self.correct_mgo)?;
-        write_float(f, self.coefficient)?;
-        write_float(f, self.width)?;
-        write!(f, " {}", self.ty)?;
+        write_with_space(f, self.index)?;
+        write_with_space(f, &self.triple)?;
+        write_with_space(f, self.value)?;
+        write_with_space(f, self.factor)?;
+        write_with_space(f, self.correct_mgo)?;
+        write_with_space(f, self.coefficient)?;
+        write_with_space(f, self.width)?;
+        write_with_space(f, &self.ty)?;
         Ok(())
     }
 }
 
 pub struct AICGDihedralAngle {
-    pub index: usize,
-    pub particles: Vec<Particle>,
-    pub value: f64,
-    pub factor: f64,
+    pub index:       usize,
+    pub quad:        Quad,
+    pub value:       f64,
+    pub factor:      f64,
     pub correct_mgo: f64,
     pub coefficient: f64,
-    pub width: f64,
-    pub ty: String,
+    pub width:       f64,
+    pub ty:          String,
 }
 
 impl FromStr for AICGDihedralAngle {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let mut parser = LineParser::new(&line[7..]);
+        let mut cursor = LineCursor::new(&line[7..]);
         Ok(AICGDihedralAngle {
-            index:       parser.parse()?,
-            particles:   parser.parse_particles(4)?,
-            value:       parser.parse()?,
-            factor:      parser.parse()?,
-            correct_mgo: parser.parse()?,
-            coefficient: parser.parse()?,
-            width:       parser.parse()?,
-            ty:          parser.parse_string(4),
+            index:       cursor.parse_with_space()?,
+            quad:        cursor.parse_with_space()?,
+            value:       cursor.parse_with_space()?,
+            factor:      cursor.parse_with_space()?,
+            correct_mgo: cursor.parse_with_space()?,
+            coefficient: cursor.parse_with_space()?,
+            width:       cursor.parse_with_space()?,
+            ty:          cursor.proceed(5).to_string(),
         })
     }
 }
@@ -348,14 +466,14 @@ impl FromStr for AICGDihedralAngle {
 impl fmt::Display for AICGDihedralAngle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "aicgdih")?;
-        write_usize(f, self.index)?;
-        write_particles(f, &self.particles)?;
-        write_float(f, self.value)?;
-        write_float(f, self.factor)?;
-        write_float(f, self.correct_mgo)?;
-        write_float(f, self.coefficient)?;
-        write_float(f, self.width)?;
-        write!(f, " {}", self.ty)?;
+        write_with_space(f, self.index)?;
+        write_with_space(f, &self.quad)?;
+        write_with_space(f, self.value)?;
+        write_with_space(f, self.factor)?;
+        write_with_space(f, self.correct_mgo)?;
+        write_with_space(f, self.coefficient)?;
+        write_with_space(f, self.width)?;
+        write_with_space(f, &self.ty)?;
         Ok(())
     }
 }
@@ -370,19 +488,19 @@ mod tests {
         let bond: NativeBond = line.parse().unwrap();
         assert_eq!(bond.index, 1);
 
-        assert_eq!(bond.pair[0].unit, 1);
-        assert_eq!(bond.pair[0].index, 1);
-        assert_eq!(bond.pair[0].intra_index, 1);
+        assert_eq!(bond.pair.0.unit, 1);
+        assert_eq!(bond.pair.0.index, 1);
+        assert_eq!(bond.pair.0.intra_index, 1);
 
-        assert_eq!(bond.pair[1].unit, 1);
-        assert_eq!(bond.pair[1].index, 2);
-        assert_eq!(bond.pair[1].intra_index, 2);
+        assert_eq!(bond.pair.1.unit, 1);
+        assert_eq!(bond.pair.1.index, 2);
+        assert_eq!(bond.pair.1.intra_index, 2);
 
         assert_eq!(bond.length, 3.7629);
         assert_eq!(bond.factor, 1.0);
         assert_eq!(bond.correct_mgo, 1.0);
         assert_eq!(bond.coefficient, 110.4);
-        assert_eq!(bond.bond_type, "pp");
+        assert_eq!(bond.ty, "pp");
 
         assert_eq!(&bond.to_string(), line);
     }
@@ -393,23 +511,23 @@ mod tests {
         let angle: NativeAngle = line.parse().unwrap();
         assert_eq!(angle.index, 1);
 
-        assert_eq!(angle.triple[0].unit, 1);
-        assert_eq!(angle.triple[0].index, 2);
-        assert_eq!(angle.triple[0].intra_index, 2);
+        assert_eq!(angle.triple.0.unit, 1);
+        assert_eq!(angle.triple.0.index, 2);
+        assert_eq!(angle.triple.0.intra_index, 2);
 
-        assert_eq!(angle.triple[1].unit, 1);
-        assert_eq!(angle.triple[1].index, 3);
-        assert_eq!(angle.triple[1].intra_index, 3);
+        assert_eq!(angle.triple.1.unit, 1);
+        assert_eq!(angle.triple.1.index, 3);
+        assert_eq!(angle.triple.1.intra_index, 3);
 
-        assert_eq!(angle.triple[2].unit, 1);
-        assert_eq!(angle.triple[2].index, 4);
-        assert_eq!(angle.triple[2].intra_index, 4);
+        assert_eq!(angle.triple.2.unit, 1);
+        assert_eq!(angle.triple.2.index, 4);
+        assert_eq!(angle.triple.2.intra_index, 4);
 
         assert_eq!(angle.angle, 148.8728);
         assert_eq!(angle.factor, 1.0);
         assert_eq!(angle.correct_mgo, 1.0);
         assert_eq!(angle.coefficient, 20.0);
-        assert_eq!(angle.angle_type, "ppp");
+        assert_eq!(angle.ty, "ppp");
 
         assert_eq!(&angle.to_string(), line);
     }
@@ -420,28 +538,28 @@ mod tests {
         let dihedral: NativeDihedralAngle = line.parse().unwrap();
         assert_eq!(dihedral.index, 1);
 
-        assert_eq!(dihedral.particles[0].unit, 1);
-        assert_eq!(dihedral.particles[0].index, 2);
-        assert_eq!(dihedral.particles[0].intra_index, 2);
+        assert_eq!(dihedral.quad.0.unit, 1);
+        assert_eq!(dihedral.quad.0.index, 2);
+        assert_eq!(dihedral.quad.0.intra_index, 2);
 
-        assert_eq!(dihedral.particles[1].unit, 1);
-        assert_eq!(dihedral.particles[1].index, 3);
-        assert_eq!(dihedral.particles[1].intra_index, 3);
+        assert_eq!(dihedral.quad.1.unit, 1);
+        assert_eq!(dihedral.quad.1.index, 3);
+        assert_eq!(dihedral.quad.1.intra_index, 3);
 
-        assert_eq!(dihedral.particles[2].unit, 1);
-        assert_eq!(dihedral.particles[2].index, 4);
-        assert_eq!(dihedral.particles[2].intra_index, 4);
+        assert_eq!(dihedral.quad.2.unit, 1);
+        assert_eq!(dihedral.quad.2.index, 4);
+        assert_eq!(dihedral.quad.2.intra_index, 4);
 
-        assert_eq!(dihedral.particles[3].unit, 1);
-        assert_eq!(dihedral.particles[3].index, 5);
-        assert_eq!(dihedral.particles[3].intra_index, 5);
+        assert_eq!(dihedral.quad.3.unit, 1);
+        assert_eq!(dihedral.quad.3.index, 5);
+        assert_eq!(dihedral.quad.3.intra_index, 5);
 
         assert_eq!(dihedral.angle, -124.4044);
         assert_eq!(dihedral.factor, 1.0);
         assert_eq!(dihedral.correct_mgo, 1.0);
         assert_eq!(dihedral.coefficient1, 1.0);
         assert_eq!(dihedral.coefficient3, 0.5);
-        assert_eq!(dihedral.dihedral_type, "pppp");
+        assert_eq!(dihedral.ty, "pppp");
 
         assert_eq!(&dihedral.to_string(), line);
     }
@@ -453,13 +571,13 @@ mod tests {
 
         assert_eq!(contact.index, 1);
 
-        assert_eq!(contact.particles[0].unit, 1);
-        assert_eq!(contact.particles[0].index, 2);
-        assert_eq!(contact.particles[0].intra_index, 2);
+        assert_eq!(contact.pair.0.unit, 1);
+        assert_eq!(contact.pair.0.index, 2);
+        assert_eq!(contact.pair.0.intra_index, 2);
 
-        assert_eq!(contact.particles[1].unit, 1);
-        assert_eq!(contact.particles[1].index, 63);
-        assert_eq!(contact.particles[1].intra_index, 63);
+        assert_eq!(contact.pair.1.unit, 1);
+        assert_eq!(contact.pair.1.index, 63);
+        assert_eq!(contact.pair.1.intra_index, 63);
 
         assert_eq!(contact.length, 6.2398);
         assert_eq!(contact.factor, 1.0);
@@ -477,17 +595,17 @@ mod tests {
 
         assert_eq!(angle.index, 1);
 
-        assert_eq!(angle.particles[0].unit, 1);
-        assert_eq!(angle.particles[0].index, 2);
-        assert_eq!(angle.particles[0].intra_index, 2);
+        assert_eq!(angle.triple.0.unit, 1);
+        assert_eq!(angle.triple.0.index, 2);
+        assert_eq!(angle.triple.0.intra_index, 2);
 
-        assert_eq!(angle.particles[1].unit, 1);
-        assert_eq!(angle.particles[1].index, 3);
-        assert_eq!(angle.particles[1].intra_index, 3);
+        assert_eq!(angle.triple.1.unit, 1);
+        assert_eq!(angle.triple.1.index, 3);
+        assert_eq!(angle.triple.1.intra_index, 3);
 
-        assert_eq!(angle.particles[2].unit, 1);
-        assert_eq!(angle.particles[2].index, 4);
-        assert_eq!(angle.particles[2].intra_index, 4);
+        assert_eq!(angle.triple.2.unit, 1);
+        assert_eq!(angle.triple.2.index, 4);
+        assert_eq!(angle.triple.2.intra_index, 4);
 
         assert_eq!(angle.value, 7.3690);
         assert_eq!(angle.factor, 1.0);
@@ -506,21 +624,21 @@ mod tests {
 
         assert_eq!(angle.index, 1);
 
-        assert_eq!(angle.particles[0].unit, 1);
-        assert_eq!(angle.particles[0].index, 2);
-        assert_eq!(angle.particles[0].intra_index, 2);
+        assert_eq!(angle.quad.0.unit, 1);
+        assert_eq!(angle.quad.0.index, 2);
+        assert_eq!(angle.quad.0.intra_index, 2);
 
-        assert_eq!(angle.particles[1].unit, 1);
-        assert_eq!(angle.particles[1].index, 3);
-        assert_eq!(angle.particles[1].intra_index, 3);
+        assert_eq!(angle.quad.1.unit, 1);
+        assert_eq!(angle.quad.1.index, 3);
+        assert_eq!(angle.quad.1.intra_index, 3);
 
-        assert_eq!(angle.particles[2].unit, 1);
-        assert_eq!(angle.particles[2].index, 4);
-        assert_eq!(angle.particles[2].intra_index, 4);
+        assert_eq!(angle.quad.2.unit, 1);
+        assert_eq!(angle.quad.2.index, 4);
+        assert_eq!(angle.quad.2.intra_index, 4);
 
-        assert_eq!(angle.particles[3].unit, 1);
-        assert_eq!(angle.particles[3].index, 5);
-        assert_eq!(angle.particles[3].intra_index, 5);
+        assert_eq!(angle.quad.3.unit, 1);
+        assert_eq!(angle.quad.3.index, 5);
+        assert_eq!(angle.quad.3.intra_index, 5);
 
         assert_eq!(angle.value, -124.4044);
         assert_eq!(angle.factor, 1.0);
