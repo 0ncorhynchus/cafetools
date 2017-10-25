@@ -1,22 +1,18 @@
 use error;
 use std::str::FromStr;
 use std::fmt;
-use std::num::{ParseIntError, ParseFloatError};
+use std::num::ParseIntError;
 
-trait LengthHint {
-    fn length_hint() -> usize;
+trait Parsable {
+    fn len_hint() -> usize;
 }
 
-impl LengthHint for ParseFloatError {
-    fn length_hint() -> usize {
-        12
-    }
+impl Parsable for f64 {
+    fn len_hint() -> usize { 12 }
 }
 
-impl LengthHint for ParseIntError {
-    fn length_hint() -> usize {
-        6
-    }
+impl Parsable for usize {
+    fn len_hint() -> usize { 6 }
 }
 
 struct LineParser<'a> {
@@ -32,15 +28,15 @@ impl<'a> LineParser<'a> {
         }
     }
 
-    pub fn parse<T: FromStr>(&mut self) -> Result<T, T::Err> where T::Err: LengthHint {
+    pub fn parse<T: FromStr + Parsable>(&mut self) -> Result<T, T::Err> {
         let start = self.pos + 1;
-        self.pos = start + <T::Err as LengthHint>::length_hint();
+        self.pos = start + T::len_hint();
         self.line[start..self.pos].trim().parse()
     }
 
-    pub fn parse_without_space<T: FromStr>(&mut self) -> Result<T, T::Err> where T::Err: LengthHint {
+    pub fn parse_without_space<T: FromStr + Parsable>(&mut self) -> Result<T, T::Err> {
         let start = self.pos;
-        self.pos = start + <T::Err as LengthHint>::length_hint();
+        self.pos = start + T::len_hint();
         self.line[start..self.pos].trim().parse()
     }
 
