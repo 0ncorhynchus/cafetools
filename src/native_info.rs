@@ -83,7 +83,7 @@ pub struct NativeBond {
     pub bond_type:      String,
 }
 
-fn fmt_particles(particles: &[Particle], f: &mut fmt::Formatter) -> fmt::Result {
+fn write_particles(f: &mut fmt::Formatter, particles: &[Particle]) -> fmt::Result {
     for p in particles.iter().take(2) {
         write!(f, " {:6}", p.unit)?;
     }
@@ -94,6 +94,14 @@ fn fmt_particles(particles: &[Particle], f: &mut fmt::Formatter) -> fmt::Result 
         write!(f, " {:6}", p.intra_index)?;
     }
     Ok(())
+}
+
+fn write_float(f: &mut fmt::Formatter, value: f64) -> fmt::Result {
+    write!(f, " {:12.4}", value)
+}
+
+fn write_usize(f: &mut fmt::Formatter, value: usize) -> fmt::Result {
+    write!(f, " {:6}", value)
 }
 
 impl FromStr for NativeBond {
@@ -116,12 +124,12 @@ impl FromStr for NativeBond {
 impl fmt::Display for NativeBond {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "bond")?;
-        write!(f, " {:6}", self.index)?;
-        fmt_particles(&self.pair, f)?;
-        write!(f, " {:12.4}", self.length)?;
-        write!(f, " {:12.4}", self.factor)?;
-        write!(f, " {:12.4}", self.correct_mgo)?;
-        write!(f, " {:12.4}", self.coefficient)?;
+        write_usize(f, self.index)?;
+        write_particles(f, &self.pair)?;
+        write_float(f, self.length)?;
+        write_float(f, self.factor)?;
+        write_float(f, self.correct_mgo)?;
+        write_float(f, self.coefficient)?;
         write!(f, " {}", self.bond_type)?;
         Ok(())
     }
@@ -157,13 +165,57 @@ impl FromStr for NativeAngle {
 impl fmt::Display for NativeAngle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "angl")?;
-        write!(f, " {:6}", self.index)?;
-        fmt_particles(&self.triple, f)?;
-        write!(f, " {:12.4}", self.angle)?;
-        write!(f, " {:12.4}", self.factor)?;
-        write!(f, " {:12.4}", self.correct_mgo)?;
-        write!(f, " {:12.4}", self.coefficient)?;
+        write_usize(f, self.index)?;
+        write_particles(f, &self.triple)?;
+        write_float(f, self.angle)?;
+        write_float(f, self.factor)?;
+        write_float(f, self.correct_mgo)?;
+        write_float(f, self.coefficient)?;
         write!(f, " {}", self.angle_type)?;
+        Ok(())
+    }
+}
+
+struct NativeDihedralAngle {
+    pub index: usize,
+    pub particles: Vec<Particle>,
+    pub angle: f64,
+    pub factor: f64,
+    pub correct_mgo: f64,
+    pub coefficient1: f64,
+    pub coefficient3: f64,
+    pub dihedral_type: String
+}
+
+impl FromStr for NativeDihedralAngle {
+    type Err = error::Error;
+
+    fn from_str(line: &str) -> Result<Self, Self::Err> {
+        let mut parser = LineParser::new(line);
+        Ok(NativeDihedralAngle {
+            index:         parser.parse_usize()?,
+            particles:     parser.parse_particles(4)?,
+            angle:         parser.parse_float()?,
+            factor:        parser.parse_float()?,
+            correct_mgo:   parser.parse_float()?,
+            coefficient1:  parser.parse_float()?,
+            coefficient3:  parser.parse_float()?,
+            dihedral_type: parser.parse_string(4),
+        })
+    }
+}
+
+impl fmt::Display for NativeDihedralAngle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "dihd")?;
+        write_usize(f, self.index)?;
+        write_particles(f, &self.particles)?;
+        write_float(f, self.angle)?;
+        write_float(f, self.factor)?;
+        write_float(f, self.correct_mgo)?;
+        write_float(f, self.coefficient1)?;
+        write_float(f, self.coefficient3)?;
+        write!(f, " {}", self.dihedral_type)?;
         Ok(())
     }
 }
@@ -220,5 +272,37 @@ mod tests {
         assert_eq!(angle.angle_type, "ppp");
 
         assert_eq!(&angle.to_string(), line);
+    }
+
+    #[test]
+    fn test_parse_native_dihedral_angle() {
+        let line = "dihd      1      1      1      2      3      4      5      2      3      4      5    -124.4044       1.0000       1.0000       1.0000       0.5000 pppp";
+        let dihedral: NativeDihedralAngle = line.parse().unwrap();
+        assert_eq!(dihedral.index, 1);
+
+        assert_eq!(dihedral.particles[0].unit, 1);
+        assert_eq!(dihedral.particles[0].index, 2);
+        assert_eq!(dihedral.particles[0].intra_index, 2);
+
+        assert_eq!(dihedral.particles[1].unit, 1);
+        assert_eq!(dihedral.particles[1].index, 3);
+        assert_eq!(dihedral.particles[1].intra_index, 3);
+
+        assert_eq!(dihedral.particles[2].unit, 1);
+        assert_eq!(dihedral.particles[2].index, 4);
+        assert_eq!(dihedral.particles[2].intra_index, 4);
+
+        assert_eq!(dihedral.particles[3].unit, 1);
+        assert_eq!(dihedral.particles[3].index, 5);
+        assert_eq!(dihedral.particles[3].intra_index, 5);
+
+        assert_eq!(dihedral.angle, -124.4044);
+        assert_eq!(dihedral.factor, 1.0);
+        assert_eq!(dihedral.correct_mgo, 1.0);
+        assert_eq!(dihedral.coefficient1, 1.0);
+        assert_eq!(dihedral.coefficient3, 0.5);
+        assert_eq!(dihedral.dihedral_type, "pppp");
+
+        assert_eq!(&dihedral.to_string(), line);
     }
 }
