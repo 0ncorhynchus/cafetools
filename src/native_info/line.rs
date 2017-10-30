@@ -1,16 +1,4 @@
-use error;
-use std::str::FromStr;
-use std::fmt;
-
-pub struct Particle {
-    pub unit:        usize,
-    pub index:       usize,
-    pub intra_index: usize,
-}
-
-pub type Pair = (Particle, Particle);
-pub type Triple = (Particle, Particle, Particle);
-pub type Quad = (Particle, Particle, Particle, Particle);
+use super::*;
 
 struct LineCursor<'a> {
     line: &'a str,
@@ -223,7 +211,8 @@ fn write_with_space<T: Formattable>(f: &mut fmt::Formatter, value: T) -> fmt::Re
     write(f, value)
 }
 
-pub struct NativeBond {
+
+pub struct Bond {
     pub index:       usize,
     pub pair:        Pair,
     pub length:      f64,
@@ -233,12 +222,12 @@ pub struct NativeBond {
     pub ty:          String,
 }
 
-impl FromStr for NativeBond {
+impl FromStr for Bond {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
         let mut cursor = LineCursor::new(&line[4..]);
-        Ok(NativeBond {
+        Ok(Bond {
             index:       cursor.parse_with_space()?,
             pair:        cursor.parse_with_space()?,
             length:      cursor.parse_with_space()?,
@@ -250,7 +239,7 @@ impl FromStr for NativeBond {
     }
 }
 
-impl fmt::Display for NativeBond {
+impl fmt::Display for Bond {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "bond")?;
         write_with_space(f, self.index)?;
@@ -264,7 +253,7 @@ impl fmt::Display for NativeBond {
     }
 }
 
-pub struct NativeAngle {
+pub struct Angle {
     pub index:       usize,
     pub triple:      Triple,
     pub angle:       f64,
@@ -274,12 +263,12 @@ pub struct NativeAngle {
     pub ty:          String
 }
 
-impl FromStr for NativeAngle {
+impl FromStr for Angle {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
         let mut cursor = LineCursor::new(&line[4..]);
-        Ok(NativeAngle {
+        Ok(Angle {
             index:       cursor.parse_with_space()?,
             triple:      cursor.parse_with_space()?,
             angle:       cursor.parse_with_space()?,
@@ -291,7 +280,7 @@ impl FromStr for NativeAngle {
     }
 }
 
-impl fmt::Display for NativeAngle {
+impl fmt::Display for Angle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "angl")?;
         write_with_space(f, self.index)?;
@@ -305,7 +294,7 @@ impl fmt::Display for NativeAngle {
     }
 }
 
-pub struct NativeDihedralAngle {
+pub struct DihedralAngle {
     pub index:        usize,
     pub quad:         Quad,
     pub angle:        f64,
@@ -316,12 +305,12 @@ pub struct NativeDihedralAngle {
     pub ty:           String,
 }
 
-impl FromStr for NativeDihedralAngle {
+impl FromStr for DihedralAngle {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
         let mut cursor = LineCursor::new(&line[4..]);
-        Ok(NativeDihedralAngle {
+        Ok(DihedralAngle {
             index:         cursor.parse_with_space()?,
             quad:          cursor.parse_with_space()?,
             angle:         cursor.parse_with_space()?,
@@ -334,7 +323,7 @@ impl FromStr for NativeDihedralAngle {
     }
 }
 
-impl fmt::Display for NativeDihedralAngle {
+impl fmt::Display for DihedralAngle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "dihd")?;
         write_with_space(f, self.index)?;
@@ -349,7 +338,7 @@ impl fmt::Display for NativeDihedralAngle {
     }
 }
 
-pub struct NativeContact {
+pub struct Contact {
     pub index:       usize,
     pub pair:        Pair,
     pub length:      f64,
@@ -359,12 +348,12 @@ pub struct NativeContact {
     pub ty:          String,
 }
 
-impl FromStr for NativeContact {
+impl FromStr for Contact {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
         let mut cursor = LineCursor::new(&line[7..]);
-        Ok(NativeContact {
+        Ok(Contact {
             index:       cursor.parse_with_space()?,
             pair:        cursor.parse_with_space()?,
             length:      cursor.parse()?,
@@ -376,7 +365,7 @@ impl FromStr for NativeContact {
     }
 }
 
-impl fmt::Display for NativeContact {
+impl fmt::Display for Contact {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "contact")?;
         write_with_space(f, self.index)?;
@@ -390,7 +379,7 @@ impl fmt::Display for NativeContact {
     }
 }
 
-pub struct AICG13Contact {
+pub struct AICGAngle {
     pub index:       usize,
     pub triple:      Triple,
     pub value:       f64,
@@ -401,12 +390,12 @@ pub struct AICG13Contact {
     pub ty:          String,
 }
 
-impl FromStr for AICG13Contact {
+impl FromStr for AICGAngle {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
         let mut cursor = LineCursor::new(&line[6..]);
-        Ok(AICG13Contact {
+        Ok(AICGAngle {
             index:       cursor.parse_with_space()?,
             triple:      cursor.parse_with_space()?,
             value:       cursor.parse_with_space()?,
@@ -419,7 +408,7 @@ impl FromStr for AICG13Contact {
     }
 }
 
-impl fmt::Display for AICG13Contact {
+impl fmt::Display for AICGAngle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "aicg13")?;
         write_with_space(f, self.index)?;
@@ -483,9 +472,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_native_bond() {
+    fn test_parse_bond() {
         let line = "bond      1      1      1      1      2      1      2       3.7629       1.0000       1.0000     110.4000 pp";
-        let bond: NativeBond = line.parse().unwrap();
+        let bond: Bond = line.parse().unwrap();
         assert_eq!(bond.index, 1);
 
         assert_eq!(bond.pair.0.unit, 1);
@@ -506,9 +495,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_native_angle() {
+    fn test_parse_angle() {
         let line = "angl      1      1      1      2      3      4      2      3      4     148.8728       1.0000       1.0000      20.0000 ppp";
-        let angle: NativeAngle = line.parse().unwrap();
+        let angle: Angle = line.parse().unwrap();
         assert_eq!(angle.index, 1);
 
         assert_eq!(angle.triple.0.unit, 1);
@@ -533,9 +522,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_native_dihedral_angle() {
+    fn test_parse_dihedral_angle() {
         let line = "dihd      1      1      1      2      3      4      5      2      3      4      5    -124.4044       1.0000       1.0000       1.0000       0.5000 pppp";
-        let dihedral: NativeDihedralAngle = line.parse().unwrap();
+        let dihedral: DihedralAngle = line.parse().unwrap();
         assert_eq!(dihedral.index, 1);
 
         assert_eq!(dihedral.quad.0.unit, 1);
@@ -565,9 +554,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_native_contact() {
+    fn test_parse_contact() {
         let line ="contact      1      1      1      2     63      2     63      6.2398      1.0000      1      0.5986 p-p";
-        let contact: NativeContact = line.parse().unwrap();
+        let contact: Contact = line.parse().unwrap();
 
         assert_eq!(contact.index, 1);
 
@@ -589,9 +578,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_aicg13_angle() {
+    fn test_parse_aicg_angle() {
         let line = "aicg13      1      1      1      2      3      4      2      3      4       7.3690       1.0000       1.0000       1.1928       0.1500 ppp";
-        let angle: AICG13Contact = line.parse().unwrap();
+        let angle: AICGAngle = line.parse().unwrap();
 
         assert_eq!(angle.index, 1);
 
