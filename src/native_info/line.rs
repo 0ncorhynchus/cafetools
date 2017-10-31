@@ -1,4 +1,6 @@
 use super::*;
+use std::str::FromStr;
+use std::fmt;
 
 struct LineCursor<'a> {
     line: &'a str,
