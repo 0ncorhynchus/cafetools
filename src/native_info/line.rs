@@ -379,7 +379,7 @@ impl fmt::Display for Contact {
     }
 }
 
-pub struct AICGAngle {
+pub struct AicgAngle {
     pub index:       usize,
     pub triple:      Triple,
     pub value:       f64,
@@ -390,12 +390,12 @@ pub struct AICGAngle {
     pub ty:          String,
 }
 
-impl FromStr for AICGAngle {
+impl FromStr for AicgAngle {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
         let mut cursor = LineCursor::new(&line[6..]);
-        Ok(AICGAngle {
+        Ok(AicgAngle {
             index:       cursor.parse_with_space()?,
             triple:      cursor.parse_with_space()?,
             value:       cursor.parse_with_space()?,
@@ -408,7 +408,7 @@ impl FromStr for AICGAngle {
     }
 }
 
-impl fmt::Display for AICGAngle {
+impl fmt::Display for AicgAngle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "aicg13")?;
         write_with_space(f, self.index)?;
@@ -423,7 +423,7 @@ impl fmt::Display for AICGAngle {
     }
 }
 
-pub struct AICGDihedralAngle {
+pub struct AicgDihedralAngle {
     pub index:       usize,
     pub quad:        Quad,
     pub value:       f64,
@@ -434,12 +434,12 @@ pub struct AICGDihedralAngle {
     pub ty:          String,
 }
 
-impl FromStr for AICGDihedralAngle {
+impl FromStr for AicgDihedralAngle {
     type Err = error::Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
         let mut cursor = LineCursor::new(&line[7..]);
-        Ok(AICGDihedralAngle {
+        Ok(AicgDihedralAngle {
             index:       cursor.parse_with_space()?,
             quad:        cursor.parse_with_space()?,
             value:       cursor.parse_with_space()?,
@@ -452,7 +452,7 @@ impl FromStr for AICGDihedralAngle {
     }
 }
 
-impl fmt::Display for AICGDihedralAngle {
+impl fmt::Display for AicgDihedralAngle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "aicgdih")?;
         write_with_space(f, self.index)?;
@@ -580,7 +580,7 @@ mod tests {
     #[test]
     fn test_parse_aicg_angle() {
         let line = "aicg13      1      1      1      2      3      4      2      3      4       7.3690       1.0000       1.0000       1.1928       0.1500 ppp";
-        let angle: AICGAngle = line.parse().unwrap();
+        let angle: AicgAngle = line.parse().unwrap();
 
         assert_eq!(angle.index, 1);
 
@@ -609,7 +609,7 @@ mod tests {
     #[test]
     fn test_parse_aicg_dihedral_angle() {
         let line = "aicgdih      1      1      1      2      3      4      5      2      3      4      5    -124.4044       1.0000       1.0000       0.4350       0.1500 pppp";
-        let angle: AICGDihedralAngle = line.parse().unwrap();
+        let angle: AicgDihedralAngle = line.parse().unwrap();
 
         assert_eq!(angle.index, 1);
 
