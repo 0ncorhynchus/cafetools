@@ -1,7 +1,7 @@
 pub mod error;
 pub mod time_series;
 pub mod native_info;
-mod block;
+pub mod block;
 
 use std::io::prelude::*;
 

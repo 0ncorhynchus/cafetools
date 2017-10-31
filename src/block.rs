@@ -22,18 +22,20 @@ pub trait ReadBlockExt: io::BufRead {
     }
 }
 
+impl<R: io::BufRead> ReadBlockExt for R {}
+
 fn is_comment(line: &String) -> bool {
     &line[0..1] == "*"
 }
 
 fn is_end_of_block(line: &String) -> bool {
-    &line[0..4] == ">>>>"
+    line.len() >= 4 && &line[0..4] == ">>>>"
 }
 
 fn search_start_of_block<R: io::BufRead>(lines: &mut io::Lines<R>) -> io::Result<String> {
     for line in lines {
         let line = line?;
-        if line.len() == 0 || is_comment(&line) { continue; }
+        if line.is_empty() || is_comment(&line) { continue; }
         if &line[0..4] == "<<<<" {
             return Ok(line[4..].trim().to_string());
         }
@@ -48,7 +50,7 @@ fn read_block<R: io::BufRead>(lines: &mut io::Lines<R>) -> io::Result<Block> {
     let mut contents = Vec::new();
     for line in lines {
         let line = line?;
-        if is_comment(&line) { continue; }
+        if line.is_empty() || is_comment(&line) { continue; }
         if is_end_of_block(&line) { break; }
         contents.push(line);
     }
