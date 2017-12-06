@@ -7,6 +7,7 @@ use std::str::FromStr;
 use std::fmt;
 use std::io;
 
+#[derive(Clone)]
 pub struct Particle {
     pub unit:        usize,
     pub index:       usize,
@@ -67,5 +68,25 @@ impl NativeInfo {
             aicg_angles: aicg_angles,
             aicg_dihedral_angles: aicg_dihedral_angles,
         })
+    }
+}
+
+impl fmt::Display for NativeInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if !self.contacts.is_empty() {
+            writeln!(f, "<<<< native contact")?;
+            writeln!(f, "** total_contact =   {}", self.contacts.len())?;
+            writeln!(f, "** definition_of_contact =       6.50 A")?;
+            writeln!(f, "** coef_go(kcal/mol) = factor_go * icon_dummy_mgo * cgo1210 * energy_unit_protein")?;
+            writeln!(f, "")?;
+            writeln!(f, "** contact between unit      1 and      1")?;
+            writeln!(f, "** total_contact_unit =   {}", self.contacts.len())?;
+            writeln!(f, "**        icon iunit1-iunit2   imp1 - imp2 imp1un-imp2un      go_nat   factor_go  dummy     coef_go")?;
+            for contact in &self.contacts {
+                writeln!(f, "{}", contact)?;
+            }
+            writeln!(f, ">>>>")?;
+        }
+        Ok(())
     }
 }
