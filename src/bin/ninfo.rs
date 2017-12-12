@@ -22,26 +22,14 @@ fn main() {
         NativeInfo::load(reader).unwrap()
     };
 
-    let new_ninfo = {
-        let contacts = ninfo.contacts
-                            .iter()
-                            .filter(|c|
-                                    c.pair.0.index >= 114 &&
-                                    c.pair.0.index <= 174 &&
-                                    c.pair.1.index >= 114 &&
-                                    c.pair.1.index <= 174)
-                            .map(|c| c.clone())
-                            .collect();
-
-        NativeInfo {
-            bonds: Vec::new(),
-            angles: Vec::new(),
-            dihedral_angles: Vec::new(),
-            contacts: contacts,
-            aicg_angles: Vec::new(),
-            aicg_dihedral_angles: Vec::new(),
-        }
-    };
-
-    println!("{}", new_ninfo);
+    println!("index,pid0,pid1,length,coefficient,type");
+    for contact in ninfo.contacts.into_iter() {
+        println!("{},{},{},{},{},{}",
+                 contact.index,
+                 contact.pair.0.index,
+                 contact.pair.1.index,
+                 contact.length,
+                 contact.coefficient,
+                 contact.ty);
+    }
 }
