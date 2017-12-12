@@ -213,7 +213,7 @@ fn write_with_space<T: Formattable>(f: &mut fmt::Formatter, value: T) -> fmt::Re
     write(f, value)
 }
 
-
+#[derive(Clone)]
 pub struct Bond {
     pub index:       usize,
     pub pair:        Pair,
@@ -255,6 +255,7 @@ impl fmt::Display for Bond {
     }
 }
 
+#[derive(Clone)]
 pub struct Angle {
     pub index:       usize,
     pub triple:      Triple,
@@ -296,6 +297,7 @@ impl fmt::Display for Angle {
     }
 }
 
+#[derive(Clone)]
 pub struct DihedralAngle {
     pub index:        usize,
     pub quad:         Quad,
@@ -340,6 +342,7 @@ impl fmt::Display for DihedralAngle {
     }
 }
 
+#[derive(Clone)]
 pub struct Contact {
     pub index:       usize,
     pub pair:        Pair,
@@ -381,6 +384,7 @@ impl fmt::Display for Contact {
     }
 }
 
+#[derive(Clone)]
 pub struct AicgAngle {
     pub index:       usize,
     pub triple:      Triple,
@@ -425,6 +429,7 @@ impl fmt::Display for AicgAngle {
     }
 }
 
+#[derive(Clone)]
 pub struct AicgDihedralAngle {
     pub index:       usize,
     pub quad:        Quad,

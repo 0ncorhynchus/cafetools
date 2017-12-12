@@ -51,7 +51,7 @@ fn main() {
             let &(ref index0, ref index1) = &contact.pair;
             let dist = distance(&frame.positions[index0.index-1],
                                 &frame.positions[index1.index-1]) as f64;
-            print!(",{}", contact.length / dist);
+            print!(",{}", dist / contact.length);
         }
         println!();
     }
