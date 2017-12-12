@@ -21,7 +21,7 @@ fn main() {
             let reader = DcdReader::new(file).unwrap();
             num_frames += reader.header.num_frames;
         }
-        num_frames
+        num_frames - args[2..].len()
     };
 
     let mut writer;
