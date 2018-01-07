@@ -28,16 +28,10 @@ fn main() {
         let num = frame.positions.len() - ADDITIONAL_LENGTH;
 
         for i in 0..num {
-            print!(",{}", i);
-        }
-        println!();
-
-        for i in 0..num {
-            print!("{}", i);
             let pos_i = &frame.positions[i];
             for j in 0..num {
                 let pos_j = &frame.positions[j];
-                print!(",{}", distance(pos_i, pos_j));
+                println!("{},{},{}", i, j, distance(pos_i, pos_j));
             }
             println!();
         }
